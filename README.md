@@ -26,7 +26,7 @@ All Batch processes lead to acceptable results. The dynamic approach and the aut
 In the last experiment, a hybrid (combined) forecast model on the basis of: arima, ets and naïve forecasting models, while also dynamically able to switch to MAPA for better results, was implemented and compared with the previous methodologies. This approach was not successful and underperformed the dynamic model. 
 A mix of methods (hybrid, MAPA, dynamic) used in dependence of their sector performance was estimated to be most suitable for the time series. 
 
-Link to the report: 
+Link to the report: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/Forecast_report.pdf 
 
 
  
