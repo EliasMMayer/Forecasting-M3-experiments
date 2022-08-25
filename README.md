@@ -1,8 +1,6 @@
 # Forecasting-M3-experiments
 
- Simple R experiments conducted for a course assignment in the topic of forecasting.
-
-Forecasting – demonstration
+ Simple R experiments conducted for a course assignment in the topic of forecasting which form the basis of a PDF report.
 
 Created by Elias Mayer ~ 25.08.2022
 as a course submission for a ‘Forecasting’ module.
