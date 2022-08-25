@@ -1,0 +1,107 @@
+---
+title: "MAPA TEst"
+author: "Elias Mayer"
+date: "21 8 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(Mcomp)
+library(forecast)
+library(dplyr)
+library(tsibble)
+library(ggplot2)
+library(ggthemes)
+library(stringr)
+library(smooth)
+library(MAPA)
+source("http://peterhaschke.com/Code/multiplot.R") 
+```
+
+
+```{r cars}
+
+M3[[712]]$x %>% autoplot()+  autolayer(M3[[712]]$xx) + theme_minimal()
+           
+#ma <- mapasimple(M3[[712]]$x, type = "ets",outplot=2,paral=2)
+y_training <- M3[[712]]$x
+y_test <- M3[[712]]$xx
+
+
+
+arr_ids <- array(NA,c(70,1))
+
+
+count = 1 
+
+
+for (ex in 1:length(M3)){     #figure our correct indexes     DATA Batch
+    
+
+   if ((M3[[ex]]$period == "QUARTERLY") & (ex >= 701) & (ex <= 1400) & (ex %% 10 == 2)) {
+     
+    arr_ids[count,1] <- ex
+       
+    count = count + 1
+    
+   }
+  
+}
+
+arr_ids <- c(702)
+
+count = 1 
+
+for (nameId in arr_ids) {
+
+
+y_training <- M3[[nameId]]$x  
+y_test <- M3[[nameId]]$xx
+
+
+plot_list <- list()
+
+
+
+map <- mapafitX <- mapaest(y_training,paral=2)
+
+map_f <- mapafor(y_training,mapafitX,fh=8, outplot=0)   
+
+outFc <- map_f$outfor
+
+acMAPE <- accuracy(outFc, y_test)
+
+
+print(acMAPE)
+
+arryFc <- y_test
+
+for (xa in 1:length(outFc)) {
+  
+  arryFc[[xa]] <- outFc[[xa]]
+ 
+}
+
+print("-----------------------------------------------------------------------")
+print(count)
+
+
+
+y_training  %>% autoplot()+  autolayer(y_test) + autolayer(arryFc) + theme_minimal()
+
+
+
+count <- count +1
+
+}
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

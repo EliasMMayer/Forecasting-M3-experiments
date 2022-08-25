@@ -1,0 +1,417 @@
+---
+title: "Automatic_1_"
+author: "Elias Mayer"
+date: "20 8 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+
+```{r cars}
+library(Mcomp)
+library(forecast)
+library(dplyr)
+library(tsibble)
+library(ggplot2)
+library(ggthemes)
+
+
+#arr_ids <- array(NA,c(70,1))
+
+#count = 1 
+
+'
+for (ex in 1:length(M3)){     #figure our correct indexes     DATA Batch
+    
+
+   if ((M3[[ex]]$period == "QUARTERLY") & (ex >= 701) & (ex <= 1400) & (ex %% 10 == 2)) {
+     
+    arr_ids[count,1] <- ex
+       
+    count = count + 1
+     
+    print( ex )
+   }
+  
+}'
+
+
+#benchmark methods
+
+#type
+#has trend - bool
+#has seasonality - bool
+
+#sMAPE
+#MAPE
+#CV 
+
+#naive
+#global average
+#other
+
+#method description
+#h=8
+#Forecasts 
+#short
+#medium
+#longturn
+#plot data 
+
+#cross validation function ------------------------------------ ETS
+
+crossVal_ETS <- function(y_train) {
+  
+
+
+yforcalc <- y_train %>% as_tsibble()
+
+
+lenY <- length(yforcalc$value)  
+
+h <- 8
+
+y <- y_train  
+# 16
+
+origins <- (length(y) - (2*h) + 1):(length(y)-h)
+
+
+
+
+
+MAPEs <- array(NA, c(length(origins), 1))
+
+count = 1
+
+for (origin in origins){
+
+  yt <- head(y, origin) 
+  
+  yv <- y[(origin+1):(origin+h)] 
+
+  #print(yv)
+ 
+  fit <- forecast::auto.arima(yt) #first model performance
+  
+  #  print(fit)
+  
+  fc <-  forecast::forecast(fit, h=h) 
+  
+  #message (fc)
+  
+  arim_1 <- 100 * mean(abs(yv - fc$mean)/abs(yv))
+  
+
+  
+  MAPEs[count, 1] <- arim_1
+  count = count +1
+
+}
+
+
+return(colMeans(MAPEs))
+}
+
+
+
+
+#---------------------------------------------------------------
+
+crossVal_NAIVE <- function(y_train) {
+  
+
+
+yforcalc <- y_train %>% as_tsibble()
+
+
+lenY <- length(yforcalc$value)  
+
+h <- 8
+
+y <- y_train  
+# 16
+
+origins <- (length(y) - (2*h) + 1):(length(y)-h)
+
+
+MAPEs <- array(NA, c(length(origins), 1))
+
+count = 1
+
+for (origin in origins){
+
+  yt <- head(y, origin) 
+  
+  yv <- y[(origin+1):(origin+h)] 
+
+  #print(yv)
+ 
+  fit <- forecast::naive(yt) #first model performance
+  
+  #  print(fit)
+  
+  fc <-  forecast::forecast(fit, h=h) 
+  
+  #message (fc)
+  
+  arim_1 <- 100 * mean(abs(yv - fc$mean)/abs(yv))
+  
+
+  
+  MAPEs[count, 1] <- arim_1
+  count = count +1
+
+}
+
+
+return(colMeans(MAPEs))
+}
+
+
+#------------------------------------------------------------
+
+
+crossVal_MEAN <- function(y_train) {
+  
+
+
+yforcalc <- y_train %>% as_tsibble()
+
+
+lenY <- length(yforcalc$value)  
+
+h <- 8
+
+y <- y_train  
+# 16
+
+origins <- (length(y) - (2*h) + 1):(length(y)-h)
+
+
+MAPEs <- array(NA, c(length(origins), 1))
+
+count = 1
+
+for (origin in origins){
+
+  yt <- head(y, origin) 
+  
+  yv <- y[(origin+1):(origin+h)] 
+
+  #print(yv)
+ 
+  fit <- forecast::meanf(yt) #first model performance
+  
+  #  print(fit)
+  
+  fc <-  forecast::forecast(fit, h=h) 
+  
+  #message (fc)
+  
+  arim_1 <- 100 * mean(abs(yv - fc$mean)/abs(yv))
+  
+
+  
+  MAPEs[count, 1] <- arim_1
+  count = count +1
+
+}
+
+
+return(colMeans(MAPEs))
+}
+
+
+
+
+
+#------------------------------------------------------------
+
+crossVal_snaive <- function(y_train) {
+  
+
+
+yforcalc <- y_train %>% as_tsibble()
+
+
+lenY <- length(yforcalc$value)  
+
+h <- 8
+
+y <- y_train  
+# 16
+
+origins <- (length(y) - (2*h) + 1):(length(y)-h)
+
+
+MAPEs <- array(NA, c(length(origins), 1))
+
+count = 1
+
+for (origin in origins){
+
+  yt <- head(y, origin) 
+  
+  yv <- y[(origin+1):(origin+h)] 
+
+  #print(yv)
+ 
+  fit <- forecast::snaive(yt) #first model performance
+  
+  #  print(fit)
+  
+  fc <-  forecast::forecast(fit, h=h) 
+  
+  #message (fc)
+  
+  arim_1 <- 100 * mean(abs(yv - fc$mean)/abs(yv))
+  
+
+  
+  MAPEs[count, 1] <- arim_1
+  count = count +1
+
+}
+
+
+return(colMeans(MAPEs))
+}
+
+
+
+#------------------------------------------------------------
+
+
+arr_ids <- array(NA,c(70,1))
+
+count = 1 
+
+
+for (ex in 1:length(M3)){     #figure our correct indexes     DATA Batch
+    
+
+   if ((M3[[ex]]$period == "QUARTERLY") & (ex >= 701) & (ex <= 1400) & (ex %% 10 == 2)) {
+     
+    arr_ids[count,1] <- ex
+       
+    count = count + 1
+     
+    #main functionality
+    
+    
+   }
+  
+}
+
+arr_all <- array(NA,c(70,12))
+
+#DATA single models 
+count =1 
+
+colnames(arr_all) <- c("Series_ID", "n_observations", "type", "period", "MAPE_ARIMA", "sMAPE_ARIMA", "CV_MAPE_ARIMA", "model", "CV_MAPE_NAIVE", "CV_MAPE_MEAN", "CV_MAPE_SNAIVE", "Trend")
+
+for (nameId in arr_ids) {
+
+  y_training <- M3[[nameId]]$x  
+  y_test <- M3[[nameId]]$xx
+  
+  #Standard data
+  
+  y_id <- M3[[nameId]]$sn
+  y_type <- M3[[nameId]]$type
+  y_period<- M3[[nameId]]$period
+  y_num <- M3[[nameId]]$n
+  
+  arr_all[count,1] <- y_id
+  arr_all[count,2] <- y_num
+  arr_all[count,3] <- y_type
+  arr_all[count,4] <- y_period
+  
+  #ets - Simple forecast 
+  
+  ets_fit <- forecast::auto.arima(y_training)
+  
+  fc <- forecast::forecast(ets_fit, h = 8)
+  
+  acc <- accuracy(fc, y_test)
+  
+
+  
+  #Fill errors
+  
+  arr_all[count,5] <- acc[2,5] #MAPE
+  
+  arr_all[count,6] <- acc[2,6] #MASE
+  
+  arr_all[count,7] <- crossVal_ETS(y_training)
+  
+  
+  #
+  
+  
+  arr_all[count,8] <- ets_fit$arma
+  
+  arr_all[count,9] <- crossVal_NAIVE(y_training)
+  
+  arr_all[count,10] <- crossVal_MEAN(y_training)
+  
+  try(
+  
+  arr_all[count,11] <- crossVal_snaive(y_training))
+  
+
+  
+ 
+  #Trend
+  ac <- forecast::mstl(y_training) 
+
+
+  value = ac[[1,2]] - ac[[length(y_training),2]] 
+  
+    
+  arr_all[count,12] <- value
+  
+  
+  
+  # Trend and seasonalities through plots 
+  
+  
+  count = count + 1
+}
+```
+
+
+
+```{r examination 1 - a, echo=FALSE}
+
+#industry decomposition
+
+arr_tsb <- arr_all %>% as_tibble() 
+
+
+arr_tsb_micro <- arr_tsb %>% filter(type == "MICRO")
+
+arr_tsb_industry <- arr_tsb %>% filter(type == "INDUSTRY")
+
+arr_tsb_macro<- arr_tsb %>% filter(type == "MACRO")
+
+arr_tsb_finance <- arr_tsb %>% filter(type == "FINANCE")
+
+arr_tsb_demographic <- arr_tsb %>% filter(type == "DEMOGRAPHIC")
+
+arr_tsb_demographic <- arr_tsb %>% mutate(Trend = as.numeric(Trend)) %>% filter(Trend <= 0)
+
+
+
+#write_xlsx(arr_tsb,"C:\\Users\\elias\\Desktop\\tab2.xlsx")
+
+```
+
+
