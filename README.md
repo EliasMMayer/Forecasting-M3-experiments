@@ -6,8 +6,6 @@ Created by Elias Mayer ~ 25.08.2022
 as a course submission for a ‘Forecasting’ module.
 
 
-Executive summary
-
 Data sources: 
 R library: Mcomp – N1355
 R library: Mcomp – 70 quarterly time series of the M3 competition with IDs in [701, 1400] considering end numbers of 2 (702, 712, …).
