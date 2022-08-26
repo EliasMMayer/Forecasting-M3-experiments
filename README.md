@@ -1,9 +1,10 @@
 # Forecasting-M3-experiments
 
- Simple R experiments conducted for a course assignment in the topic of forecasting which form the basis of a PDF report.
-
 Created by Elias Mayer ~ 25.08.2022
 as a course submission for a ‘Forecasting’ module.
+
+
+Simple R experiments conducted for a course assignment in the topic of forecasting. Please see the pdf report for a detailed desciption. 
 
 
 Data sources: 
@@ -14,7 +15,8 @@ R library: Mcomp – 70 quarterly time series of the M3 competition with IDs in 
 
 See: https://cran.r-project.org/web/packages/Mcomp/index.html 
 
-Process:
+
+Process and outcome:
 
 In the first step, an explanatory data analysis was conducted on the data set: N1355.
 From this analysis, matching models for forecasting were chosen through a variety of measurements, including AIC values, time-series cross validation and test forecasts. 
@@ -28,6 +30,9 @@ All Batch processes lead to acceptable results. The dynamic approach and the aut
 
 In the last experiment, a hybrid (combined) forecast model on the basis of: arima, ets and naïve forecasting models, while also dynamically able to switch to MAPA for better results, was implemented and compared with the previous methodologies. This approach was not successful and underperformed the dynamic model. 
 A mix of methods (hybrid, MAPA, dynamic) used in dependence of their sector performance was estimated to be most suitable for the time series. 
+
+
+Relevant files:
 
 Link to the pdf report: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/Forecast_report.pdf 
 
