@@ -33,7 +33,8 @@ Link to the pdf report: https://github.com/EliDerDeli/Forecasting-M3-experiments
 
 The code is split:
 
-1. manual examination and model estimation: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/1-Manual_First_Part.Rmd 
+1. manual examination and MA model estimation: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/1-Manual_First_Part.Rmd 
+2. manual examination and reg. model estimation: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/2-Manual_First_Part_Regression.Rmd
 
 
 
