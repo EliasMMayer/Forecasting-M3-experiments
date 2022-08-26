@@ -10,7 +10,10 @@ Data sources:
 R library: Mcomp – N1355
 R library: Mcomp – 70 quarterly time series of the M3 competition with IDs in [701, 1400] considering end numbers of 2 (702, 712, …).
 
+See: https://cran.r-project.org/web/packages/Mcomp/index.html 
+
 Process:
+
 In the first step, an explanatory data analysis was conducted on the data set: N1355.
 From this analysis, matching models for forecasting were chosen through a variety of measurements, including AIC values, time-series cross validation and test forecasts. 
 
@@ -24,7 +27,7 @@ All Batch processes lead to acceptable results. The dynamic approach and the aut
 In the last experiment, a hybrid (combined) forecast model on the basis of: arima, ets and naïve forecasting models, while also dynamically able to switch to MAPA for better results, was implemented and compared with the previous methodologies. This approach was not successful and underperformed the dynamic model. 
 A mix of methods (hybrid, MAPA, dynamic) used in dependence of their sector performance was estimated to be most suitable for the time series. 
 
-Link to the report: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/Forecast_report.pdf 
+Link to the pdf report: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/Forecast_report.pdf 
 
 
  
