@@ -31,5 +31,10 @@ A mix of methods (hybrid, MAPA, dynamic) used in dependence of their sector perf
 
 Link to the pdf report: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/Forecast_report.pdf 
 
+The code is split:
+
+1. manual examination and model estimation: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/1-Manual_First_Part.Rmd 
+
+
 
  
