@@ -1,5 +1,5 @@
 ---
-title: "Automatic_1_MAPE"
+title: "Automatic_MAPPA"
 author: "Elias Mayer"
 date: "21 8 2021"
 output:
