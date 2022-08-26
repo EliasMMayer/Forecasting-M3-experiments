@@ -36,7 +36,7 @@ Relevant files:
 
 Link to the pdf report: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/Forecast_report.pdf 
 
-The code is split in markdown files, each of which is independentl usable. 
+The code is split in markdown files, each of which runs independent. 
 
 
 
