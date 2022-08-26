@@ -1,0 +1,154 @@
+---
+title: "Automatic_1_"
+author: "Elias Mayer"
+date: "20 8 2021"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Simple batch ARIMA model evaluated against different other forecasting models (CV - snaive) for more details see report: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/Forecast_report.pdf 
+
+```{r arima}
+library(Mcomp)
+library(forecast)
+library(dplyr)
+library(tsibble)
+library(ggplot2)
+library(ggthemes)
+library(stringr)
+
+
+#------------------------------------------------------------
+
+
+arr_ids <- array(NA,c(70,1))
+
+count = 1 
+
+
+for (ex in 1:length(M3)){ 
+    
+
+   if ((M3[[ex]]$period == "QUARTERLY") & (ex >= 701) & (ex <= 1400) & (ex %% 10 == 2)) {
+     
+    arr_ids[count,1] <- ex
+       
+    count = count + 1
+  
+   }
+  
+}
+
+
+arr_all <- array(NA,c(70,13))
+
+count =1 
+
+colnames(arr_all) <- c("Series_ID", "n_observations", "type", "period", "MAPE_ARIMA", "MASE_ARIMA", "MASE_ARIMA", "model", "MAPE_NAIVE", "MAPE_MEAN", "MAPE_SNAIVE", "Trend","Seasonality")
+
+for (nameId in arr_ids) {
+
+  y_training <- M3[[nameId]]$x  
+  y_test <- M3[[nameId]]$xx
+  
+  #Standard data
+  
+  y_id <- M3[[nameId]]$sn
+  y_type <- M3[[nameId]]$type
+  y_period<- M3[[nameId]]$period
+  y_num <- M3[[nameId]]$n
+  
+  arr_all[count,1] <- y_id
+  arr_all[count,2] <- y_num
+  arr_all[count,3] <- y_type
+  arr_all[count,4] <- y_period
+  
+
+  
+  #ARIMA fit
+  
+ arima_fit <- forecast::auto.arima(y_training, method="ML", ic="aic")
+  
+  fc <- forecast::forecast(arima_fit, h = 8)
+  
+  acc <- forecast::accuracy(fc, y_test)
+  
+
+  
+  #Fill errors
+  
+  arr_all[count,5] <- acc[2,5] #MAPE
+  
+  arr_all[count,6] <- acc[2,6] #MASE
+  
+  arr_all[count,7] <-  "not applied " #crossVal_ARIMA not applied to save computation time
+  
+  
+  # Get arima information
+  
+  a <- arimaorder(arima_fit)
+  
+  str = " "
+  
+  for (i in 1:length(a)){
+    
+   str  = paste(str,as.character(a[[i]]))
+  }
+
+
+  
+  arr_all[count,8] <- str
+
+  
+  
+  fx1 <- forecast::naive(y_training)
+  
+  arr_all[count,9] <- forecast::accuracy(fx1, y_test)[2,5]
+  
+  fx2 <- forecast::meanf(y_training)
+  
+  arr_all[count,10] <- forecast::accuracy(fx2, y_test)[2,5]
+  
+  try(
+  fx3 <- forecast::snaive(y_training))
+  try(arr_all[count,11] <- forecast::accuracy(fx3, y_test)[2,5])
+  
+
+  
+ 
+  #Trend
+  
+  ac <- forecast::mstl(y_training) 
+
+
+  value = ac[[1,2]] - ac[[length(y_training),2]] 
+  
+    
+  arr_all[count,12] <- value
+  
+  
+  arr_all[count,13] <- forecast::findfrequency(y_training)
+  
+  
+  
+  count = count + 1
+}
+```
+
+
+
+```{r examination 1 - a, echo=FALSE}
+
+
+arr_tsb <- arr_all %>% as_tibble() 
+
+arr_tsb
+
+```
+
+
