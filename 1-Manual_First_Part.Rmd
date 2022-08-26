@@ -1,0 +1,550 @@
+---
+title: "Manual_Modeling"
+author: "Elias Mayer"
+date: "12 8 2021"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+1 Rmarkdown file to execute, code is split between workbooks to enable easier seperated execution. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Load packages and prepare dataset 
+
+PDF: https://github.com/EliDerDeli/Forecasting-M3-experiments/blob/main/Forecast_report.pdf 
+
+```{r load libaries and dependencies, include=FALSE}
+
+library(Mcomp)
+library(forecast)
+library(dplyr)
+library(tsibble)
+library(ggplot2)
+library(ggthemes)
+library(fable)
+library(feasts)
+
+arr_ids <- array(NA,c(70,1))
+
+count = 1 
+
+#Exclude not needed datasets (see PDF for more information)
+
+for (ex in 1:length(M3)){     #figure our correct indexes     DATA Batch
+    
+
+   if ((M3[[ex]]$period == "QUARTERLY") & (ex >= 701) & (ex <= 1400) & (ex %% 10 == 2)) {
+     
+    arr_ids[count,1] <- ex
+       
+    count = count + 1
+     
+    print( ex )
+   }
+  
+}
+
+
+#DATA preparation for single models 
+
+data_part1 <- M3[[1355]]
+
+```
+
+
+ 
+```{r General_Prep_1}
+
+#read out training and test data (structured through Mcomp)
+
+y_train <- data_part1$x
+y_test <- data_part1$xx
+
+#transform in appropriate data structure
+
+y_train_tsi <- as_tsibble(y_train)
+y_test_tsi <- as_tsibble(y_test)
+
+#get first and last val
+
+startI <- y_train_tsi$index[1]   #train data 
+endI <- y_test_tsi$index[length(y_test_tsi$index)] #test data
+
+#read data set description 
+
+data_part1$sn
+data_part1$st
+data_part1$period
+data_part1$h
+data_part1$type
+data_part1$description
+startI
+endI
+
+#assign train test to more readable vars
+
+y_train <- data_part1$x
+y_test <- data_part1$xx
+
+min(y_train)
+
+#inspect test and training 
+
+y_train %>% autoplot() +
+  autolayer(y_test) +
+  theme_minimal() + 
+  labs(title = "Plot of data set N1355", subtitle = "Employment - Greece", y = "employment", x="time")
+
+#combine in one ds to plot seasonality graph
+
+ts_bind <- ts.union(y_train, y_test) # combines training and test to one ts for exploration
+
+y_train %>% ggseasonplot() +
+   theme_minimal() 
+
+```
+
+
+```{r Exploratory_Part_2_decompose}
+
+#Decompose training data - add and mult
+
+dy <- y_train %>% decompose()  #default additive 
+
+y_train %>% decompose(type="multiplicative") %>% autoplot() + theme_minimal() 
+
+dy %>% autoplot() +  theme_minimal() 
+
+#Visualize the components (trend, seasonality, remainders)
+
+dy$trend  %>% autoplot(colour = "blue") +  labs(title = " Trend") + theme_minimal() 
+dy$seasonal  %>% autoplot(colour = "blue") +  labs(title = " Seasonal") + theme_minimal() 
+dy$random  %>% autoplot(colour = "blue") +  labs(title = " Remainder") + theme_minimal() 
+
+
+#STL - Multiple seasonal decomposition 
+
+dy_stl <- y_train %>% as_tsibble() %>% 
+  model(stl = STL(value))
+
+# overlay graph seasonality included and adjusted - via components
+
+components(dy_stl) %>%
+  as_tsibble() %>%
+  autoplot(value, colour = "gray") +
+  geom_line(aes(y=season_adjust), colour = "#0072B2") + theme_minimal() +labs(title = "Plot of data set N1355", subtitle = "Employment - Greece - seasonal adjusted", y = "employment", x="time")
+
+
+# plot components training set  
+
+components(dy_stl) %>% autoplot(value, colour = "#0072B2")  + theme_minimal() 
+
+```
+
+
+```{r autocorrealation_1}
+
+#Check autocorrealation for determination of model 
+
+acf(y_train) 
+
+pacf(y_train)
+
+Box.test (y_train, lag = 1, type = "Ljung")
+```
+
+
+
+```{r Exploratory_Part_3_ets}
+
+library(smooth)
+library(greybox)
+
+#first error type
+#trend type
+#seasonal type
+
+
+#Fit simple Models 
+
+fit_ets <- es(y_train, model="MMA")
+#summary(fit_ets)
+
+fit_ets_MAdA  <- es(y_train, model="MAdA")
+#summary(fit_ets_MAdA)
+
+fit_ets_MAdM  <- es(y_train, model="MAdM")  # Holt-Winter’s Exponential Smoothing with Damped Trend (Multiplicative Seasonality)
+#summary(fit_ets_MAdA)
+
+#Check information criterion's for model selection 
+
+fit_ets$ICs
+fit_ets_MAdA$ICs
+fit_ets_MAdM$ICs
+
+#----
+summary(fit_ets)
+summary(fit_ets_MAdA)
+
+plot(fit_ets, 6)
+
+plot(fit_ets_MAdA, 6)
+
+#Usually time series data has natural seasonal pattern, so the practical rule-of-thumb would be to set h to twice this value. 
+
+checkresiduals(fit_ets$residuals, test =FALSE)
+checkresiduals(fit_ets_MAdA$residuals,  test =FALSE)
+
+h = min(8,length(fit_ets$residuals/5))
+h2 = min(8,length(fit_ets_MAdA$residuals/5))
+
+#check independence 
+
+Box.test(fit_ets$residuals, type="Ljung-Box", lag =h)           # lag = 3m
+Box.test(fit_ets_MAdA$residuals, type="Ljung-Box", lag =h2)
+```
+
+
+
+
+```{r Exploratory_Part_4_ets_Partition trainings data exp 1}
+
+y_ <- y_train %>% as_tsibble()
+
+y_train_train <- subset(y_train, end = length(y_train)-8)
+y_train_test <- subset(y_train, start = (length(y_train)-8), end=length(y_train))
+
+#Plots for visual demonstration of partitioning 
+
+ts_bind %>% autoplot() + theme_minimal() +
+   labs(title = "Forecasts for data set N1355", subtitle = "Unpartioned training and test data", y = "employment", x="time") 
+
+ts_bind_train <- ts.union(y_train_train, y_train_test)
+
+ts_bind_train %>% autoplot()  + theme_minimal() + 
+  labs(title = "Forecasts for data set N1355", subtitle = "Training data further partitioned (80/20)", y = "employment", x="time") 
+
+
+
+#Fit models 
+
+y_train_train_ts <- as.ts(y_train_train)
+y_train_test_ts <- as.ts(y_train_test)
+
+fit_ets_train <- es(y_train_train_ts, model="MMA")
+fit_ets_MAdA_train  <- es(y_train_train_ts, model="MAdA")
+
+
+#model 1 - ETS 
+
+fc_es_tr <- forecast::forecast(fit_ets_train, h = 8, level = .95)
+
+fc_es_MAda_tr <- forecast::forecast(fit_ets_MAdA_train, h = 8, level = .95)
+
+
+#Accuracy tests
+
+ac_MMA<- fc_es_tr$mean %>% forecast::accuracy(y_train_test_ts)
+ac_MAdA<- fc_es_MAda_tr$mean  %>% forecast::accuracy(y_train_test_ts)
+
+
+cat(ac_MMA[,5]," MMA Model // ") #MMA Model MAPE
+cat(ac_MAdA[,5]," MAdA Model") #MAdA Model MAPE
+
+
+ts_bind_train %>% autoplot() +
+  autolayer(fc_es_MAda_tr$mean, series = "MAdA Model") +
+  autolayer(fc_es_MAda_tr$model$fitted, series = "fitted") + 
+  theme_minimal() + 
+  labs(title = "ETS - Forecasts for data set N1355 with MAdA", 
+       subtitle = "Training data further partitioned (8 last Q's as test)", y = "employment", x="time",
+       caption ="The test data is part of the partioned training data (Last 8 quaters of the training set)") 
+
+ts_bind_train %>% autoplot() +
+  autolayer(fc_es_tr$mean, series = "MMA Model") +
+  autolayer(fc_es_tr$model$fitted, series = "fitted") + 
+  theme_minimal() + 
+  labs(title = "ETS - Forecasts for data set N1355 with MMA", 
+       subtitle = "Training data further partitioned (8 last Q's as test)", y = "employment", x="time",
+       caption ="The test data is part of the partioned training data (Last 8 quaters of the training set)") 
+ 
+
+```
+
+
+```{r Cross validation ets}
+
+#length y_train = 64 > 32 / 4 = 8 years // 64 - 8 = 52 (last origin) - 64-32 +1 = 33
+
+origins <- 32:52
+y <- y_train  
+h <- 8
+
+#set up array for examination
+
+MAPEs <- array(NA, c(length(origins), 2))
+
+#Make plot lists
+
+plot_list_1 = list()
+plot_list_2 = list()
+
+#fill array through readability focused for loop 
+
+for (origin in origins){
+
+  yt <- head(y, origin) %>% as_tsibble() 
+  
+  yv <- y[(origin+1):(origin+h)] 
+
+  
+  #Model 1
+  fit <- yt %>% fabletools::model(ARIMA(value ~ pdq(p=4,1,0) + PDQ(P=0:2,1,Q=0:2))) #first model performance
+  
+  fc <-  fabletools::forecast(fit, h=h) 
+  
+  arim_1 <- 100 * mean(abs(yv - fc$.mean)/abs(yv))
+  
+  #Model 2
+    
+  fit_2<- yt  %>% fabletools::model(ARIMA(value ~ pdq(0,1,1) + PDQ(0,1,1))) 
+  
+  fc_2<- fabletools::forecast(fit_2, h=h) 
+  
+  arim_2 <- 100 * mean(abs(yv - fc_2$.mean)/abs(yv)) #MAPE
+
+  #Mapes
+  
+  MAPEs[which(origin==origins), 1] <- arim_1
+  MAPEs[which(origin==origins), 2] <- arim_2
+}
+
+colMeans(MAPEs)
+
+```
+Based on this means a suitable model is chosen. 
+
+```{r ETS Choosen Model}
+
+#model 1 - ETS 
+
+fc_es_MMA <- forecast::forecast(fit_ets, h = 8, level = .95)
+fc_es_MMA_lower <- forecast::forecast(fit_ets, h = 8, level = .80)
+```
+
+
+```{r Exploratory_Part_5_ets FORECAST 1}
+
+
+#comparison methods 
+
+comp_fit <- y_train  %>% naive(h=8)
+
+#Accuracy tests
+
+a_MMA <- fc_es_MMA$mean %>% forecast::accuracy(y_test)
+
+a_Bench <-comp_fit %>% forecast::accuracy(y_test)
+
+
+cat(a_MMA[,5]," MMA Model // ") #MMA Model MAPE
+cat(a_Bench[2,5]," Naive Benchmark") #MAdA Model MAPE
+
+#main plot / problematic intervals
+
+y_train %>% autoplot() + 
+  autolayer(fc_es_MMA$mean, series = "MMA")  +
+  autolayer(y_test, series = "test")  +
+  autolayer(comp_fit$mean, series = "naive") +
+  autolayer(fc_es_MMA$model$fitted, series = "fitted") +
+  theme_minimal()+
+  labs(title = "ETS - Forecasts for data set N1355", subtitle = "Detail view - based on: MMA", y = "employment", x="time") + xlim(1990,1995)
+
+
+#Final Plot with confidence intervals 
+
+y_train %>% autoplot() + 
+  autolayer(fc_es_MMA$mean, series = "MMA")  +
+  autolayer(fc_es_MMA_lower$upper, alpha = 0.5, series = "Intervall .80")  + 
+  #geom_line(fc_es_MMA_lower$upper, aes(x, y)) + 
+  autolayer(fc_es_MMA_lower$lower, alpha = 0.5,series = "Intervall .80")  + 
+  autolayer(fc_es_MMA$upper, alpha = 0.5, series = "Intervall .95")  + 
+  autolayer(fc_es_MMA$lower, alpha = 0.5, series = "Intervall .95")  + 
+  autolayer(y_test, series = "test")  +
+  theme_minimal()+
+  labs(title = "ETS - Forecasts for data set N1355", subtitle = "MMA with confidence intervals 95% and 80%", y = "employment", x="time") 
+
+
+y_train %>% autoplot() + 
+  autolayer(fc_es_MMA$mean, series = "MMA")  +
+  autolayer(fc_es_MMA_lower$upper, alpha = 0.5, series = "Intervall .80")  + 
+  #geom_line(fc_es_MMA_lower$upper, aes(x, y)) + 
+  autolayer(fc_es_MMA_lower$lower, alpha = 0.5,series = "Intervall .80")  + 
+  autolayer(fc_es_MMA$upper, alpha = 0.5, series = "Intervall .95")  + 
+  autolayer(fc_es_MMA$lower, alpha = 0.5, series = "Intervall .95")  + 
+  autolayer(y_test, series = "test")  +
+  theme_minimal()+
+  labs(title = "ETS - Forecasts for data set N1355", subtitle = "MMA with confidence intervals 95% and 80%", y = "employment", x="time") + xlim(1991,1995)
+
+```
+
+#Seasonlaity and residuals 
+
+```{r stationarity_1}
+
+library(forecast)
+library(fable)
+
+ndiffs(y_train)
+
+nsdiffs(y_train)
+
+
+
+y_train %>% autoplot() + theme_minimal() +labs(title = "N1355") 
+
+y_train %>% log() %>% autoplot() +  theme_minimal() +labs(title = "N1355 - log transformed") 
+ 
+y_train %>% log() %>% diff(1) %>% autoplot() +  theme_minimal() +labs(title = "N1355 - log transformed + diff(1)") 
+
+stat_y_train <- y_train %>% log() %>% diff(4) %>% diff(1) 
+
+stat_y_train %>% autoplot() +  theme_minimal() +labs(title = "N1355 - log transformed + diff(1) + seasonal diff") 
+
+
+stat_y_train %>% ggtsdisplay(main="") + theme_minimal()
+
+ndiffs(stat_y_train)
+
+nsdiffs(stat_y_train)
+```
+
+
+```{r ARIMA find model}
+
+#new var assignment
+
+y_train_tsb <- y_train %>% as_tsibble()
+y_test_tsb <- y_test %>% as_tsibble()
+
+#create arima model, based on previous examination 
+
+arima <- y_train_tsb%>% model(ARIMA(value ~ pdq(p=4,1,0) + PDQ(P=0,1,Q=0)))  
+
+report(arima)
+
+arima_aut <- y_train_tsb%>% model(ARIMA(value))
+
+
+report(arima_aut)
+```
+
+
+```{r ARIMA forecast}
+
+#check residuals 
+
+residuals(arima) %>% autoplot()
+
+arima %>% gg_tsresiduals()
+
+
+residuals(arima_aut) %>% autoplot()
+
+arima_aut %>% gg_tsresiduals()
+
+
+dofI <- length(y_train_tsb) - 4
+dofI2 <- length(y_train_tsb) - 2
+  
+ augment(arima) %>%
+  features(.innov, ljung_box, lag = 8, dof=dofI )
+
+ augment(arima_aut) %>%
+  features(.innov, ljung_box, lag = 8, dof=dofI2 )
+ 
+```
+
+
+```{r ARIMA forecast partioned for comparison}
+
+#FABLE
+
+y_train_train_tsb <- y_train_train %>% as_tsibble()
+y_train_test_tsb <- y_train_test %>% as_tsibble()
+
+#quarter data so --- 8 forecasts > 8 quarters = 2 years 
+
+
+arima_ch <- y_train_train_tsb %>% model(ARIMA(value ~ pdq(p=4,1,0) + PDQ(P=0:2,1,Q=0:2)))  
+report(arima_ch)
+
+#ARIMA(0,1,1)(0,1,1)[4] 
+arima_fit_ch <- y_train_train_tsb %>% model(ARIMA(value ~ pdq(0,1,1) + PDQ(0,1,1)))  
+report(arima_fit_ch)
+
+#length y_train = 64 > 32 / 4 = 8 years // 64 - 8 = 52 (last origin) - 64-32 +1 = 33
+
+origins <- 32:52
+y <- y_train  
+h <- 8
+
+MAPEs <- array(NA, c(length(origins), 2))
+
+# Make plots.
+plot_list_1 = list()
+plot_list_2 = list()
+
+for (origin in origins){
+
+  yt <- head(y, origin) %>% as_tsibble() 
+  
+  yv <- y[(origin+1):(origin+h)] 
+
+  
+  #Model 1
+  fit <- yt %>% model(ARIMA(value ~ pdq(p=4,1,0) + PDQ(P=0:2,1,Q=0:2))) #first model performance
+  
+  fc <-  fabletools::forecast(fit, h=h) 
+  
+  arim_1 <- 100 * mean(abs(yv - fc$.mean)/abs(yv))
+  
+  #Model 2
+    
+  fit_2<- yt  %>% model(ARIMA(value ~ pdq(0,1,1) + PDQ(0,1,1))) 
+  
+  fc_2<- fabletools::forecast(fit_2, h=h) 
+  
+  arim_2 <- 100 * mean(abs(yv - fc_2$.mean)/abs(yv)) #MAPE
+
+  #Mapes
+  
+  MAPEs[which(origin==origins), 1] <- arim_1
+  MAPEs[which(origin==origins), 2] <- arim_2
+}
+
+colMeans(MAPEs)
+
+```
+
+
+
+```{r ARIMA forecast partioned for comparison 2}
+
+fc_ar <- fabletools::forecast(arima_aut, h = 8)
+
+ac_ar <- fc_ar %>% accuracy(y_test_tsb)
+mape_ar <- ac_ar[,7]
+
+print(mape_ar)
+
+y_train_tsb %>% autoplot(value) + autolayer(fc_ar)+ theme_minimal() +labs(title = "N1355 - ARIMA(0,1,1)(0,1,1)[4]") +ylab("employment")
+
+```
+
+
